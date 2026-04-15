@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Noticeboard - DSO101 | CST</title>
+<link rel="stylesheet" href="noticeboard.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo-mark">CST</div>
+    <div class="header-title">
+      <h1>Student Noticeboard</h1>
+      <p>DSO101 &mdash; Phuntsho &middot; Kelden &middot; Jigme &middot; Yeshey &mdash; 02/04/2026</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="notice-count" id="noticeCount">0 notices</span>
+    <button class="btn-post" onclick="openModal()">+ Post Notice</button>
+  </div>
+</header>
+
+<!-- BOARD WRAPPER -->
+<div class="board-wrapper">
+  <div class="board-label">
+    <h2>Notice Board</h2>
+    <p>College of Science and Technology &mdash; Post, browse &amp; manage announcements.</p>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <input class="search-input" type="text" id="searchInput"
+           placeholder="Search notices..." oninput="renderNotices()" />
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" data-filter="all"      onclick="setFilter(this,'all')">All</button>
+    <button class="filter-btn"        data-filter="general"  onclick="setFilter(this,'general')">General</button>
+    <button class="filter-btn"        data-filter="academic" onclick="setFilter(this,'academic')">Academic</button>
+    <button class="filter-btn"        data-filter="event"    onclick="setFilter(this,'event')">Events</button>
+    <button class="filter-btn"        data-filter="urgent"   onclick="setFilter(this,'urgent')">Urgent</button>
+    <button class="filter-btn"        data-filter="club"     onclick="setFilter(this,'club')">Clubs</button>
+  </div>
+
+  <!-- Notice Board -->
+  <div class="cork-board">
+    <div class="notices-grid" id="noticesGrid"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  DSO101 &mdash; Student Noticeboard &mdash; College of Science &amp; Technology, Phuntsholing &mdash; Built with HTML / CSS / JS
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="overlayClick(event)">
+  <div class="modal-box">
+    <div class="modal-pin">
+      <div class="modal-pin-head"></div>
+      <div class="modal-pin-needle"></div>
+    </div>
+    <button class="modal-close" onclick="closeModal()">&#10005;</button>
+    <h3>Pin a New Notice</h3>
+    <form id="noticeForm" onsubmit="submitNotice(event)">
+      <div class="form-group">
+        <label>Notice Title *</label>
+        <input type="text" id="fTitle" placeholder="e.g. Exam Timetable Released" maxlength="80" required />
+      </div>
+      <div class="form-group">
+        <label>Message *</label>
+        <textarea id="fBody" placeholder="Write your announcement here..." maxlength="400" required></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="fCategory">
+            <option value="general">General</option>
+            <option value="academic">Academic</option>
+            <option value="event">Event</option>
+            <option value="urgent">Urgent</option>
+            <option value="club">Club</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Posted By *</label>
+          <input type="text" id="fAuthor" placeholder="Your name" maxlength="40" required />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-submit">Pin Notice</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let notices = [];
+  let currentFilter = 'all';
+  let nextId = 1;
+
+  const TILTS = [-2.5, -1.5, 0, 1, 2, -3, 1.8, -0.8, 3, -1.2];
+  const PINS  = ['pin-red', 'pin-blue', 'pin-gold', 'pin-green'];
+
+  const SEEDS = [
+    { title: 'Final Project Submission Reminder',
+      body: 'All DSO101 project submissions are due by Week 14. Ensure your Docker images are pushed to Docker Hub and your README is complete.',
+      category: 'academic', author: 'Jigme Ngawang', date: '02 Apr 2026' },
+    { title: 'Jenkins Lab Session',
+      body: 'Extra Jenkins hands-on lab scheduled for this Friday at 2 PM in Lab 3. Bring your laptops with Docker Desktop installed.',
+      category: 'event', author: 'Phuntsho Namgyel', date: '02 Apr 2026' },
+    { title: 'GitHub Actions Workshop',
+      body: 'A peer-led workshop on writing GitHub Actions workflow YAML files will be held Tuesday after class. Sign-up on the shared sheet.',
+      category: 'event', author: 'Kelden Phuntsho', date: '01 Apr 2026' },
+    { title: 'URGENT: Docker Hub Rate Limits',
+      body: 'Anonymous pulls from Docker Hub are now rate-limited. Ensure you are logged in before pulling images during pipeline runs.',
+      category: 'urgent', author: 'Yeshey Lhaden', date: '01 Apr 2026' },
+    { title: 'DSO Study Group',
+      body: 'Looking for study group members for DSO101. Meeting every Wednesday 6 PM in the library. All are welcome!',
+      category: 'club', author: 'Kelden Phuntsho', date: '31 Mar 2026' },
+    { title: 'Week 9 Docker Compose Milestone',
+      body: 'By end of Week 9, all three containers (Frontend, Backend, PostgreSQL) should be running locally via Docker Compose.',
+      category: 'general', author: 'Phuntsho Namgyel', date: '30 Mar 2026' }
+  ];
+
+  function init() {
+    const saved = localStorage.getItem('cst_nb_blue');
+    if (saved) {
+      const p = JSON.parse(saved);
+      notices = p.notices || []; nextId = p.nextId || 1;
+    } else {
+      SEEDS.forEach(s => addNoticeData(s));
+    }
+    renderNotices();
+  }
+
+  function save() {
+    localStorage.setItem('cst_nb_blue', JSON.stringify({ notices, nextId }));
+  }
+
+  function addNoticeData(data) {
+    notices.unshift({
+      id: nextId++, title: data.title, body: data.body,
+      category: data.category, author: data.author,
+      date: data.date || todayStr(),
+      tilt: TILTS[Math.floor(Math.random() * TILTS.length)],
+      pin:  PINS[Math.floor(Math.random()  * PINS.length)]
+    });
+    save();
+  }
+
+  function todayStr() {
+    return new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  }
+
+  function renderNotices() {
+    const grid   = document.getElementById('noticesGrid');
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    const filtered = notices.filter(n => {
+      const mf = currentFilter === 'all' || n.category === currentFilter;
+      const ms = !search ||
+        n.title.toLowerCase().includes(search) ||
+        n.body.toLowerCase().includes(search)  ||
+        n.author.toLowerCase().includes(search);
+      return mf && ms;
+    });
+
+    updateCount(filtered.length);
+
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="empty-state">
+        <span class="empty-icon">— BOARD EMPTY —</span>
+        <p>No notices found. Be the first to pin one!</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(n => cardHTML(n)).join('');
+  }
+
+  function cardHTML(n) {
+    const catMap = {
+      general:  ['tag-general',  'General'],
+      academic: ['tag-academic', 'Academic'],
+      event:    ['tag-event',    'Event'],
+      urgent:   ['tag-urgent',   'Urgent'],
+      club:     ['tag-club',     'Club']
+    };
+    const [tagClass, tagLabel] = catMap[n.category] || ['tag-general', 'General'];
+    const be = s => s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    return `
+      <div class="notice-card ${n.pin}" id="card-${n.id}"
+           style="--tilt:${n.tilt}deg" data-cat="${n.category}">
+        <div class="card-pin ${n.pin}">
+          <div class="pin-head"></div><div class="pin-needle"></div>
+        </div>
+        <span class="card-tag ${tagClass}">${tagLabel}</span>
+        <div class="card-title">${be(n.title)}</div>
+        <div class="card-body">${be(n.body)}</div>
+        <div class="card-footer">
+          <div class="card-meta">
+            <strong>${be(n.author)}</strong>${n.date}
+          </div>
+          <button class="btn-delete" onclick="deleteNotice(${n.id})" title="Remove">&#10005;</button>
+        </div>
+      </div>`;
+  }
+
+  function updateCount(n) {
+    document.getElementById('noticeCount').textContent = n + ' notice' + (n !== 1 ? 's' : '');
+  }
+
+  function deleteNotice(id) {
+    const el = document.getElementById('card-' + id);
+    if (el) {
+      el.classList.add('removing');
+      setTimeout(() => {
+        notices = notices.filter(n => n.id !== id);
+        save(); renderNotices();
+        showToast('Notice removed from board.');
+      }, 300);
+    }
+  }
+
+  function setFilter(btn, filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderNotices();
+  }
+
+  function openModal() {
+    document.getElementById('modalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('fTitle').focus(), 100);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.getElementById('noticeForm').reset();
+  }
+
+  function overlayClick(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  }
+
+  function submitNotice(e) {
+    e.preventDefault();
+    const title    = document.getElementById('fTitle').value.trim();
+    const body     = document.getElementById('fBody').value.trim();
+    const category = document.getElementById('fCategory').value;
+    const author   = document.getElementById('fAuthor').value.trim();
+    if (!title || !body || !author) { showToast('Please fill in all required fields.', true); return; }
+    addNoticeData({ title, body, category, author });
+    renderNotices(); closeModal();
+    showToast('Notice pinned to the board!');
+  }
+
+  let toastTimer;
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    setTimeout(() => t.classList.add('show'), 10);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  init();
+</script>
+</body>
+</html>
