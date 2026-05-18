@@ -110,68 +110,77 @@
   <script>
     let notices = [];
     let currentFilter = 'all';
-    let nextId = 1;
 
+    const API_URL = 'http://localhost:5001';
     const TILTS = [-2.5, -1.5, 0, 1, 2, -3, 1.8, -0.8, 3, -1.2];
     const PINS = ['pin-red', 'pin-blue', 'pin-gold', 'pin-green'];
 
-    const SEEDS = [
-      {
-        title: 'Final Project Submission Reminder',
-        body: 'All DSO101 project submissions are due by Week 14. Ensure your Docker images are pushed to Docker Hub and your README is complete.',
-        category: 'academic', author: 'Jigme Ngawang', date: '02 Apr 2026'
-      },
-      {
-        title: 'Jenkins Lab Session',
-        body: 'Extra Jenkins hands-on lab scheduled for this Friday at 2 PM in Lab 3. Bring your laptops with Docker Desktop installed.',
-        category: 'event', author: 'Phuntsho Namgyel', date: '02 Apr 2026'
-      },
-      {
-        title: 'GitHub Actions Workshop',
-        body: 'A peer-led workshop on writing GitHub Actions workflow YAML files will be held Tuesday after class. Sign-up on the shared sheet.',
-        category: 'event', author: 'Kelden Phuntsho', date: '01 Apr 2026'
-      },
-      {
-        title: 'URGENT: Docker Hub Rate Limits',
-        body: 'Anonymous pulls from Docker Hub are now rate-limited. Ensure you are logged in before pulling images during pipeline runs.',
-        category: 'urgent', author: 'Yeshey Lhaden', date: '01 Apr 2026'
-      },
-      {
-        title: 'DSO Study Group',
-        body: 'Looking for study group members for DSO101. Meeting every Wednesday 6 PM in the library. All are welcome!',
-        category: 'club', author: 'Kelden Phuntsho', date: '31 Mar 2026'
-      },
-      {
-        title: 'Week 9 Docker Compose Milestone',
-        body: 'By end of Week 9, all three containers (Frontend, Backend, PostgreSQL) should be running locally via Docker Compose.',
-        category: 'general', author: 'Phuntsho Namgyel', date: '30 Mar 2026'
+    // ── API CALLS ──
+    async function fetchNotices() {
+      try {
+        const res = await fetch(`${API_URL}/announcements`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        notices = data.map(n => ({
+          ...n,
+          tilt: TILTS[Math.floor(Math.random() * TILTS.length)],
+          pin: PINS[Math.floor(Math.random() * PINS.length)]
+        }));
+        renderNotices();
+      } catch (err) {
+        console.error('Failed to fetch notices:', err);
+        showToast('Failed to load notices from server', true);
       }
-    ];
+    }
 
-    function init() {
-      const saved = localStorage.getItem('cst_nb_blue');
-      if (saved) {
-        const p = JSON.parse(saved);
-        notices = p.notices || []; nextId = p.nextId || 1;
-      } else {
-        SEEDS.forEach(s => addNoticeData(s));
+    async function createNotice(data) {
+      try {
+        const res = await fetch(`${API_URL}/announcements`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        await fetchNotices();
+        return true;
+      } catch (err) {
+        console.error('Failed to create notice:', err);
+        showToast(`Error: ${err.message}`, true);
+        return false;
+      }
+    }
+
+    async function deleteNoticeAPI(id) {
+      try {
+        const res = await fetch(`${API_URL}/announcements/${id}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await fetchNotices();
+        return true;
+      } catch (err) {
+        console.error('Failed to delete notice:', err);
+        showToast('Failed to delete notice', true);
+        return false;
+      }
+    }
+
+    async function init() {
+      // Try to fetch from API first
+      await fetchNotices();
+
+      // If no notices, try to use localStorage as fallback (for development)
+      if (notices.length === 0) {
+        const saved = localStorage.getItem('cst_nb_blue');
+        if (saved) {
+          const p = JSON.parse(saved);
+          notices = p.notices || [];
+        }
       }
       renderNotices();
-    }
-
-    function save() {
-      localStorage.setItem('cst_nb_blue', JSON.stringify({ notices, nextId }));
-    }
-
-    function addNoticeData(data) {
-      notices.unshift({
-        id: nextId++, title: data.title, body: data.body,
-        category: data.category, author: data.author,
-        date: data.date || todayStr(),
-        tilt: TILTS[Math.floor(Math.random() * TILTS.length)],
-        pin: PINS[Math.floor(Math.random() * PINS.length)]
-      });
-      save();
     }
 
     function todayStr() {
@@ -238,14 +247,8 @@
     }
 
     function deleteNotice(id) {
-      const el = document.getElementById('card-' + id);
-      if (el) {
-        el.classList.add('removing');
-        setTimeout(() => {
-          notices = notices.filter(n => n.id !== id);
-          save(); renderNotices();
-          showToast('Notice removed from board.');
-        }, 300);
+      if (confirm('Delete this notice?')) {
+        deleteNoticeAPI(id);
       }
     }
 
@@ -276,10 +279,16 @@
       const body = document.getElementById('fBody').value.trim();
       const category = document.getElementById('fCategory').value;
       const author = document.getElementById('fAuthor').value.trim();
-      if (!title || !body || !author) { showToast('Please fill in all required fields.', true); return; }
-      addNoticeData({ title, body, category, author });
-      renderNotices(); closeModal();
-      showToast('Notice pinned to the board!');
+      if (!title || !body || !author) {
+        showToast('Please fill in all required fields.', true);
+        return;
+      }
+      createNotice({ title, body, category, author }).then(success => {
+        if (success) {
+          closeModal();
+          showToast('Notice pinned to the board!');
+        }
+      });
     }
 
     let toastTimer;
