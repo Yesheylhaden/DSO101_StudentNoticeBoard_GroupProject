@@ -1,0 +1,46 @@
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: noticeboard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    environment:
+      DB_HOST: db # ⭐ IMPORTANT: Use 'db' (service name), NOT localhost
+      DB_PORT: 5432
+      DB_NAME: noticeboard
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      FLASK_ENV: production
+      FLASK_DEBUG: False
+    depends_on:
+      db:
+        condition: service_healthy
+    command: python app.py
+
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
