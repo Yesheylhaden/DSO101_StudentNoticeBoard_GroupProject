@@ -240,7 +240,22 @@ jobs:
       - name: Start Docker Compose stack
         run: |
           docker compose up -d
-          sleep 10
+          echo "⏳ Waiting for services to be ready..."
+          sleep 15
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:5001/health 2>/dev/null; then
+              echo "✅ Backend is ready!"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/30 - Backend not ready yet, retrying..."
+            sleep 2
+          done
+          echo "❌ Backend failed to start"
+          docker compose logs
+          exit 1
 
       - name: Test API health endpoint
         run: |
