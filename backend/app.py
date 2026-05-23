@@ -5,8 +5,10 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file only in development
+# In Docker/production, environment variables are set via docker-compose or GitHub Actions
+if os.getenv("FLASK_ENV") != "production":
+    load_dotenv()
 
 app = Flask(__name__)
 # Allow frontend to call this API
