@@ -1,94 +1,252 @@
 # 📌 Student Noticeboard - DSO101 Group Project
 
-A full-stack web application for posting, browsing, and managing student announcements. Built with Flask (backend), PostgreSQL (database), and vanilla HTML/CSS/JS (frontend).
+**Course:** DSO101 | **Date:** 02/04/2026  
+**Team:** Phuntsho Namgyel · Kelden Phuntsho Dorji · Jigme Ngawang Chogyal · Yeshey Lhaden
 
-**Team:** Phuntsho Namgyel · Kelden Phuntsho · Jigme Ngawang · Yeshey Lhaden  
-**Date:** 19 May 2026
+A **full-stack, containerized web application** where students can post, browse, filter, and manage announcements. Demonstrates modern DevOps practices with complete CI/CD automation, Docker containerization, and security best practices.
 
 ---
 
-## 🏗️ Project Structure
+## 📋 Table of Contents
+
+1. [Project Overview](#-project-overview)
+2. [Architecture](#-architecture)
+3. [Technology Stack](#-technology-stack)
+4. [Project Structure](#-project-structure)
+5. [Quick Start - Local Development](#-quick-start---local-development)
+6. [Docker & Docker Compose](#-docker--docker-compose)
+7. [CI/CD Pipeline](#-cicd-pipeline)
+8. [API Documentation](#-api-documentation)
+9. [Testing](#-testing)
+10. [Team Roles & Responsibilities](#-team-roles--responsibilities)
+11. [Security & Best Practices](#-security--best-practices)
+12. [Troubleshooting](#-troubleshooting)
+
+---
+
+## 🎯 Project Overview
+
+### What Is It?
+A **digital student notice board** – a full-stack web application that replaces traditional physical bulletin boards with an online platform where:
+- Students can **post announcements** (with category, title, body, author)
+- Browse all **notices in real-time**
+- **Filter by category** (general, academic, event, urgent, club)
+- **Search** announcements by keyword
+- **Delete** their own notices
+- All data **persists in PostgreSQL**
+
+### Primary Aims
+1. ✅ Build a **full-stack web application** with real database persistence
+2. ✅ **Containerize** all services (frontend, backend, database) using Docker
+3. ✅ Implement a **multi-stage CI/CD pipeline** (GitHub Actions)
+4. ✅ Automate **build, test, security scanning, and deployment**
+5. ✅ Follow **industry-standard security** practices (no hardcoded secrets, non-root users, environment variables)
+
+### Success Criteria (Completed)
+- ✅ Working 3-container app with full CRUD via browser
+- ✅ Fully automated pipeline triggered on every push to `main`
+- ✅ Versioned Docker images pushed to Docker Hub
+- ✅ Unit tests with PostgreSQL test database
+- ✅ Non-root containers with no hardcoded credentials
+- ✅ Comprehensive documentation & README
+
+---
+
+## 🏗️ Architecture
+
+### Three-Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     BROWSER / CLIENT                    │
+│                (Renders HTML/CSS/JS UI)                 │
+└────────────────────────┬────────────────────────────────┘
+                         │ HTTP Requests
+                         ▼
+        ┌────────────────────────────────┐
+        │   FRONTEND CONTAINER (Nginx)   │
+        │  - Serves HTML/CSS/JavaScript  │
+        │  - Calls Backend REST API      │
+        │  - Port: 8080 (public)         │
+        └────────────────┬───────────────┘
+                         │ REST API Calls (localhost:5001)
+                         ▼
+        ┌────────────────────────────────┐
+        │   BACKEND CONTAINER (Flask)    │
+        │  - Python Flask REST API       │
+        │  - CORS enabled                │
+        │  - Talks to Database           │
+        │  - Port: 5000 (internal)       │
+        │  - Port: 5001 (docker-compose) │
+        └────────────────┬───────────────┘
+                         │ SQL Queries
+                         ▼
+        ┌────────────────────────────────┐
+        │  DATABASE CONTAINER (PostgreSQL)│
+        │  - PostgreSQL 14               │
+        │  - Database: noticeboard       │
+        │  - Persistent Volume           │
+        │  - Port: 5432                  │
+        └────────────────────────────────┘
+```
+
+### Docker Compose Network
+- **Service-to-service communication** via service names (e.g., `db`, `backend`, `frontend`)
+- **Shared Docker network** (`docker-compose.yml` creates one automatically)
+- **Health checks** ensure services are ready before dependencies start
+- **Persistent volume** (`postgres_data`) stores database files even after container restart
+
+### CI/CD Pipeline Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Code Push to GitHub (main branch)                      │
+└────────────────────────┬────────────────────────────────┘
+                         ▼
+    ┌─────────────────────────────────────┐
+    │ STAGE 1: Code Quality & Linting     │
+    │  - Flake8 (Python linter)           │
+    │  - Black (code formatter)           │
+    └────────────────┬────────────────────┘
+                     ▼
+    ┌─────────────────────────────────────┐
+    │ STAGE 2: Unit Tests                 │
+    │  - Pytest framework                 │
+    │  - PostgreSQL test database         │
+    │  - Code coverage reports            │
+    └────────────────┬────────────────────┘
+                     ▼
+    ┌─────────────────────────────────────┐
+    │ STAGE 3: Build Docker Images        │
+    │  - Backend (Python Flask)           │
+    │  - Frontend (Nginx)                 │
+    │  - Push to Docker Hub               │
+    └────────────────┬────────────────────┘
+                     ▼
+    ┌─────────────────────────────────────┐
+    │ STAGE 4: Security Scanning          │
+    │  - Trivy vulnerability scanner      │
+    │  - Upload results to GitHub         │
+    └────────────────┬────────────────────┘
+                     ▼
+    ┌─────────────────────────────────────┐
+    │ STAGE 5: Integration Tests          │
+    │  - Docker Compose stack up          │
+    │  - Test API endpoints               │
+    │  - Health checks                    │
+    └────────────────┬────────────────────┘
+                     ▼
+    ✅ Pipeline Complete - Ready for Deployment
+```
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| **Frontend** | HTML5 / CSS3 / JavaScript (Vanilla) | ES6+ | Responsive UI, API calls |
+| **Backend** | Python Flask | 3.9 | REST API, business logic |
+| **Database** | PostgreSQL | 14 | Persistent data storage |
+| **Container** | Docker | Latest | Containerization |
+| **Orchestration** | Docker Compose | 3.8 | Multi-container networking |
+| **CI/CD** | GitHub Actions | Latest | Automated pipeline |
+| **Registry** | Docker Hub | - | Image versioning & storage |
+| **Security Scanning** | Trivy | Latest | Vulnerability detection |
+| **Testing Framework** | Pytest | Latest | Unit testing |
+| **Code Analysis** | Flake8, Black | Latest | Linting & formatting |
+
+---
+
+## 📁 Project Structure
 
 ```
 DSO101_StudentNoticeBoard_GroupProject/
-├── frontend/
-│   ├── noticeboard.html      ← Main UI (calls backend API)
-│   ├── noticeboard.css       ← Styling
-│   └── mega.webp             ← Logo
+│
+├── .github/
+│   └── workflows/
+│       └── ci-cd-pipeline.yml          ← GitHub Actions workflow (5 stages)
+│
 ├── backend/
-│   ├── app.py                ← Flask REST API
-│   ├── requirements.txt       ← Python dependencies
-│   ├── .env                  ← Database credentials (local)
-│   ├── .env.example          ← Template for team
-│   ├── .gitignore            ← Prevent committing secrets
-│   └── README.md             ← Backend API docs
-├── README.md                 ← This file
-└── docker-compose.yml        ← (To be created by Docker team)
+│   ├── app.py                          ← Flask REST API (CRUD endpoints)
+│   ├── requirements.txt                 ← Python dependencies
+│   ├── Dockerfile                       ← Backend container definition
+│   ├── .env.example                     ← Template for environment variables
+│   ├── .gitignore                       ← Prevent committing secrets
+│   ├── README.md                        ← Backend API documentation
+│   └── tests/
+│       ├── __init__.py
+│       └── test_app.py                  ← 14+ unit tests
+│
+├── frontend/
+│   ├── noticeboard.html                 ← Main UI (single-page app)
+│   ├── noticeboard.css                  ← Styling (responsive design)
+│   ├── mega.webp                        ← CST logo
+│   └── Dockerfile                       ← Generated by CI/CD pipeline
+│
+├── docker-compose.yml                   ← Orchestrate 3 services locally
+│
+├── README.md                            ← This file (project overview)
+│
+└── GITHUB_SECRETS_SETUP_FINAL-1.md      ← Instructions for CI/CD setup
 ```
 
 ---
 
-## ✅ What's DONE (Backend - Kelden)
-
-### Backend API (Flask)
-- ✅ **GET /announcements** - Retrieve all notices
-- ✅ **POST /announcements** - Create new notice
-- ✅ **PUT /announcements/{id}** - Update notice
-- ✅ **DELETE /announcements/{id}** - Delete notice
-- ✅ **GET /health** - Health check endpoint
-
-### Database (PostgreSQL)
-- ✅ Database: `noticeboard` (created)
-- ✅ Table: `notices` (auto-created by Flask)
-- ✅ Data persistence verified
-- ✅ Running on `localhost:5432`
-
-### Frontend Integration
-- ✅ Updated to call backend API
-- ✅ No more localStorage - uses real database
-- ✅ Full CRUD UI working
-- ✅ Category filtering, search, delete working
-
-### Security & Configuration
-- ✅ Environment variables for credentials
-- ✅ SQL injection protection (SQLAlchemy)
-- ✅ Input validation on all endpoints
-- ✅ CORS configured
-- ✅ .gitignore prevents sensitive file commits
-
-### Testing
-- ✅ All endpoints tested and working
-- ✅ Data verified in PostgreSQL
-- ✅ API running on port 5001
-
----
-
-## 🚀 Quick Start (Local Development)
+## 🚀 Quick Start - Local Development
 
 ### Prerequisites
-- Python 3.9+
-- PostgreSQL 14+
-- pip
+- **Python 3.9+** – [Download](https://www.python.org/downloads/)
+- **PostgreSQL 14+** – [Download](https://www.postgresql.org/download/)
+- **pip** – Usually comes with Python
+- **Git** – For cloning the repo
 
-### Setup Backend
+### Step 1: Clone Repository
 
 ```bash
-# Navigate to backend
+git clone https://github.com/Yesheylhaden/DSO101_StudentNoticeBoard_GroupProject.git
+cd DSO101_StudentNoticeBoard_GroupProject
+```
+
+### Step 2: Setup Backend
+
+```bash
+# Navigate to backend directory
 cd backend
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# Create database (if not exists)
+# Create database (run once)
 createdb noticeboard
+
+# Copy environment template
+cp .env.example .env
 
 # Run Flask server
 python3 app.py
 ```
 
-Server will run at: `http://localhost:5001`
+**Expected output:**
+```
+ * Running on http://127.0.0.1:5000
+ * WARNING in app.py:...: This is a development server.
+```
 
-### Test API
+### Step 3: Open Frontend
+
+```bash
+# In a new terminal, navigate to project root
+# Open in browser:
+open frontend/noticeboard.html
+
+# Or use a simple HTTP server:
+cd frontend
+python3 -m http.server 8000
+# Then visit: http://localhost:8000
+```
+
+### Step 4: Test the API
 
 ```bash
 # Health check
@@ -101,466 +259,634 @@ curl http://localhost:5001/announcements
 curl -X POST http://localhost:5001/announcements \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Test Notice",
-    "body": "Test body",
+    "title": "Welcome to Noticeboard",
+    "body": "This is a test notice",
     "category": "general",
-    "author": "Your Name"
+    "author": "Test User"
   }'
 ```
-
-### Open Frontend
-
-1. Open `frontend/noticeboard.html` in a web browser
-2. API should auto-connect to `http://localhost:5001`
-3. Click "+ Post Notice" to create
-4. Notices appear from database
 
 ---
 
-## 📋 TODO for Docker Team (Phuntsho, Jigme, Yeshey)
+## 🐳 Docker & Docker Compose
 
-### ⭐ KEY POINT: Zero Database Setup Required!
+### Why Docker?
+- **Consistency**: Works the same on any machine (laptop, CI/CD, production)
+- **Isolation**: Each service runs in its own container
+- **Scalability**: Easy to replicate and manage services
+- **Security**: Containers can run as non-root users
 
-When you run `docker-compose up --build`:
-- ✅ PostgreSQL container starts automatically
-- ✅ Database `noticeboard` is created automatically
-- ✅ Table `notices` is created automatically
-- ✅ All credentials are pre-configured in docker-compose.yml
-- ✅ **You do nothing!** Just run the command.
+### Building Images Locally
 
-**No need to:**
-- ❌ Install PostgreSQL locally
-- ❌ Create databases manually
-- ❌ Set credentials
-- ❌ Run any SQL commands
-
-Everything is automated!
-
-### Tasks:
-1. **Create Dockerfile** in `backend/` folder
-2. **Create docker-compose.yml** in project root
-3. **Build and test containers**
-
-### Step 1: Create `backend/Dockerfile`
-
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app.py .
-COPY .env.example .env
-
-EXPOSE 5000
-
-CMD ["python", "app.py"]
-```
-
-**How to create it:**
 ```bash
+# Build backend image
 cd backend
-nano Dockerfile  # or use your editor
-# Paste the Dockerfile content above
-# Save and exit
+docker build -t student-noticeboard-backend:latest .
+
+# Build frontend image (simple Nginx)
+cd ../frontend
+docker build -t student-noticeboard-frontend:latest .
 ```
 
-### Step 2: Create `docker-compose.yml` (in project root)
-
-```yaml
-version: '3.8'
-
-services:
-  db:
-    image: postgres:14
-    environment:
-      POSTGRES_DB: noticeboard
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build: ./backend
-    ports:
-      - "5001:5000"
-    environment:
-      DB_HOST: db          # ⭐ IMPORTANT: Use 'db' (service name), NOT localhost
-      DB_PORT: 5432
-      DB_NAME: noticeboard
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      FLASK_ENV: production
-      FLASK_DEBUG: False
-    depends_on:
-      db:
-        condition: service_healthy
-    command: python app.py
-
-  frontend:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-    depends_on:
-      - backend
-
-volumes:
-  postgres_data:
-```
-
-**How to create it:**
-```bash
-cd ..  # Go to project root (DSO101_StudentNoticeBoard_GroupProject)
-nano docker-compose.yml
-# Paste the docker-compose content above
-# Save and exit
-```
-
-### Step 3: Build and Run
+### Running with Docker Compose
 
 ```bash
-# From project root directory
-docker-compose up --build
-```
-
-**What this does automatically:**
-1. ✅ Builds the Flask backend image from `backend/Dockerfile`
-2. ✅ Creates PostgreSQL container (no setup needed!)
-3. ✅ Creates Nginx frontend container
-4. ✅ All containers are linked together
-5. ✅ **Database auto-creates** with tables when Flask starts
-6. ✅ Data persists in `postgres_data` volume
-
-**No manual database setup needed!** Everything is automatic.
-
-**Access the app:**
-- Frontend: `http://localhost:8080`
-- API: `http://localhost:5001`
-- PostgreSQL: `localhost:5432`
-
-### Step 4: Test the Full Stack
-
-**In a new terminal (while docker-compose is running):**
-
-```bash
-# Test health check
-curl http://localhost:5001/health
-
-# Create a notice
-curl -X POST http://localhost:5001/announcements \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Docker Test",
-    "body": "Testing in container",
-    "category": "general",
-    "author": "Team"
-  }'
-
-# Get all notices
-curl http://localhost:5001/announcements
-
-# Open frontend in browser
-open http://localhost:8080
-# or
-firefox http://localhost:8080
-```
-
-### Step 5: Verify Everything Works
-
-**Checklist:**
-- [ ] Containers started without errors
-- [ ] Frontend loads at http://localhost:8080
-- [ ] Can create notices from frontend
-- [ ] Notices appear in database
-- [ ] Data persists after refresh
-- [ ] Can delete notices
-- [ ] API responds to curl requests
-
-### Troubleshooting
-
-**Containers won't start?**
-```bash
-# Check Docker is running
-docker --version
-
-# Check for port conflicts
-lsof -i :5001
-lsof -i :8080
-lsof -i :5432
+# Start all 3 services (frontend, backend, database)
+docker-compose up -d
 
 # View logs
-docker-compose logs backend
-docker-compose logs db
-```
+docker-compose logs -f
 
-**Database connection error?**
-```bash
-# Wait for database to be ready
-docker-compose logs db
-
-# Rebuild without cache
-docker-compose up --build --no-cache
-```
-
-**Can't access frontend?**
-```bash
-# Check if nginx container is running
-docker ps
-
-# Check nginx logs
-docker-compose logs frontend
-
-# Verify frontend files exist
-ls -la frontend/
-```
-
-**Need to restart?**
-```bash
-# Stop all containers
+# Stop services
 docker-compose down
 
-# Remove volumes (clears data)
+# Remove volumes (database data)
 docker-compose down -v
-
-# Start fresh
-docker-compose up --build
 ```
 
-### Important Notes for Your Team
+### Service Details
 
-1. **DB_HOST must be 'db'** - This is the service name in docker-compose, NOT localhost
-2. **Don't commit .env** - It's in .gitignore, use .env.example template
-3. **Volume persistence** - Database data persists even after stopping containers
-4. **Port mapping** - `5001:5000` means: external:internal (backend internally runs on 5000)
-5. **Nginx serves frontend** - Static HTML/CSS/JS served by Nginx on port 8080
+| Service | Image | Port | Network |
+|---------|-------|------|---------|
+| **db** | postgres:14 | 5432 | Internal only |
+| **backend** | student-noticeboard-backend | 5000 → 5001 | 127.0.0.1:5001 |
+| **frontend** | nginx:alpine | 80 → 8080 | 127.0.0.1:8080 |
+
+### Environment Variables (docker-compose.yml)
+
+```yaml
+environment:
+  DB_HOST: db              # Service name (not localhost!)
+  DB_PORT: 5432            # PostgreSQL default port
+  DB_NAME: noticeboard     # Database name
+  DB_USER: postgres        # PostgreSQL user
+  DB_PASSWORD: postgres    # PostgreSQL password
+  FLASK_ENV: production    # Production mode
+  FLASK_DEBUG: False       # Disable debug mode
+```
 
 ---
 
-## 📊 API Endpoints Reference
+## 🤖 CI/CD Pipeline
 
-### GET /announcements
-**Get all notices**
+### What Does It Do?
+
+Every time code is pushed to the **main** branch, the GitHub Actions pipeline automatically:
+
+1. **Checks Code Quality** (Flake8, Black)
+2. **Runs Unit Tests** (Pytest with PostgreSQL test database)
+3. **Builds Docker Images** (backend + frontend)
+4. **Scans for Vulnerabilities** (Trivy security scanner)
+5. **Tests Integration** (Docker Compose stack with API tests)
+
+### Setup GitHub Secrets
+
+Store credentials securely:
+
 ```bash
-curl http://localhost:5001/announcements
+# 1. Go to GitHub Repo → Settings → Secrets and variables → Actions
+# 2. Click "New repository secret" for each:
+
+Secret 1: DOCKER_USERNAME
+Value: sevenkels
+
+Secret 2: DOCKER_PASSWORD
+Value: [Your Docker Personal Access Token]
 ```
+
+**⚠️ Never commit credentials to Git!**
+
+### Workflow File Location
+
+```
+.github/workflows/ci-cd-pipeline.yml
+```
+
+### Pipeline Stages
+
+#### **STAGE 1: Code Quality & Linting** (2 min)
+- Installs Python 3.11
+- Runs Flake8 (error detection)
+- Checks Black formatting
+
+#### **STAGE 2: Unit Tests** (3 min)
+- Starts PostgreSQL 14 test database
+- Installs dependencies
+- Runs 14+ Pytest tests
+- Uploads coverage reports to Codecov
+
+#### **STAGE 3: Build Docker Images** (5 min)
+- Authenticates to Docker Hub
+- Builds backend image
+- Builds frontend image (Nginx)
+- Tags with git branch, semantic version, commit SHA, latest
+- Pushes to Docker Hub
+
+#### **STAGE 4: Security Scanning** (3 min)
+- Scans backend image with Trivy
+- Scans frontend image with Trivy
+- Uploads results to GitHub Security tab
+
+#### **STAGE 5: Integration Tests** (4 min)
+- Starts Docker Compose stack
+- Tests `/health` endpoint
+- Tests `GET /announcements`
+- Tests `POST /announcements`
+- Tears down stack
+
+### Triggering Manually
+
+```bash
+# Just push to main
+git add .
+git commit -m "Your message"
+git push origin main
+
+# Check status: GitHub Repo → Actions tab
+```
+
+---
+
+## 📡 API Documentation
+
+### Base URL
+- **Local**: `http://localhost:5001`
+- **Docker**: `http://localhost:5001` (via docker-compose)
+- **Production**: (Deployed via CI/CD)
+
+### Endpoints
+
+#### **1. Health Check**
+
+```http
+GET /health
+```
+
+**Response:**
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+#### **2. Get All Notices**
+
+```http
+GET /announcements
+```
+
 **Response:**
 ```json
 [
   {
     "id": 1,
-    "title": "Test Notice",
-    "body": "This is a test",
+    "title": "Welcome",
+    "body": "This is a notice",
     "category": "general",
-    "author": "Kelden",
-    "date": "18 May 2026"
+    "author": "Admin",
+    "date": "02 Apr 2026"
   }
 ]
 ```
 
-### POST /announcements
-**Create a new notice**
+---
+
+#### **3. Create Notice**
+
+```http
+POST /announcements
+Content-Type: application/json
+
+{
+  "title": "New Notice",
+  "body": "Description of the notice",
+  "category": "academic",
+  "author": "Your Name"
+}
+```
+
+**Valid Categories:**
+- `general` (default)
+- `academic`
+- `event`
+- `urgent`
+- `club`
+
+**Response:** (HTTP 201)
+```json
+{
+  "id": 2,
+  "title": "New Notice",
+  "body": "Description of the notice",
+  "category": "academic",
+  "author": "Your Name",
+  "date": "02 Apr 2026"
+}
+```
+
+**Error Response:** (HTTP 400)
+```json
+{
+  "error": "title, body, and author are required"
+}
+```
+
+---
+
+#### **4. Delete Notice**
+
+```http
+DELETE /announcements/{id}
+```
+
+**Response:** (HTTP 200)
+```json
+{
+  "message": "Notice deleted successfully"
+}
+```
+
+---
+
+### CORS Configuration
+
+The API allows requests from any origin:
+```python
+CORS(app)  # In app.py
+```
+
+This enables the frontend to call the backend API from any domain.
+
+---
+
+## ✅ Testing
+
+### Unit Tests
+
 ```bash
-curl -X POST http://localhost:5001/announcements \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "New Notice",
-    "body": "Notice body (max 400 chars)",
-    "category": "academic",
-    "author": "Your Name"
-  }'
-```
-**Valid Categories:** `general`, `academic`, `event`, `urgent`, `club`
+# Install pytest
+pip install pytest pytest-cov
 
-### PUT /announcements/{id}
-**Update a notice**
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage report
+pytest tests/ -v --cov=. --cov-report=html
+
+# View coverage report
+open htmlcov/index.html
+```
+
+### Test Coverage
+
+File: `backend/tests/test_app.py`
+
+**Test Classes:**
+
+1. **TestHealth** – Tests `/health` endpoint
+2. **TestNotices** – Tests all CRUD operations
+   - Empty list test
+   - Create notice (valid)
+   - Create notice (missing fields)
+   - Create notice (invalid category)
+   - Get notices after creation
+   - And more...
+
+**Sample Test:**
+
+```python
+def test_create_announcement(self, client):
+    """Test POST /announcements creates a new notice."""
+    notice_data = {
+        'title': 'Test Notice',
+        'body': 'This is a test notice',
+        'category': 'general',
+        'author': 'Test Author'
+    }
+    response = client.post(
+        '/announcements',
+        json=notice_data,
+        content_type='application/json'
+    )
+    assert response.status_code == 201
+    assert response.json['title'] == 'Test Notice'
+```
+
+---
+
+## 👥 Team Roles & Responsibilities
+
+| Team Member | Role | Responsibilities |
+|---|---|---|
+| **Yeshey Lhaden** | Frontend Lead | • HTML/CSS/JavaScript UI<br/>• Responsive design<br/>• User interaction logic<br/>• API integration |
+| **Kelden Phuntsho Dorji** | Backend & Docker Lead | • Flask REST API<br/>• PostgreSQL database design<br/>• Environment variables<br/>• Dockerfiles<br/>• Docker Compose setup |
+| **Jigme Ngawang Chogyal** | Jenkins & CI Lead | • Jenkinsfile pipeline<br/>• Build automation<br/>• Test orchestration<br/>• Deployment scripting |
+| **Phuntsho Namgyel** | GitHub Actions & DevOps Lead | • GitHub Actions workflow<br/>• Secrets management<br/>• Docker Hub integration<br/>• Security scanning setup |
+| **All** | Security & Documentation | • Environment variable handling<br/>• Non-root container users<br/>• README & API docs<br/>• Presentation prep |
+
+---
+
+## 🔐 Security & Best Practices
+
+### 1. Secrets Management
+
+❌ **Never commit credentials:**
 ```bash
-curl -X PUT http://localhost:5001/announcements/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Updated Title",
-    "body": "Updated body"
-  }'
+# BAD - Never do this!
+DB_PASSWORD=postgres123
+DOCKER_TOKEN=abc123xyz
 ```
 
-### DELETE /announcements/{id}
-**Delete a notice**
+✅ **Use environment variables:**
 ```bash
-curl -X DELETE http://localhost:5001/announcements/1
+# Good - .env (not committed)
+DB_PASSWORD=${DB_PASSWORD}
+
+# Good - GitHub Secrets
+Settings → Secrets and variables → Actions
+```
+
+✅ **Use .gitignore:**
+```
+.env
+.env.local
+*.pem
+```
+
+### 2. Non-Root Containers
+
+```dockerfile
+# In Dockerfile (best practice)
+RUN useradd -m -u 1000 appuser
+USER appuser
+```
+
+This prevents container escape attacks.
+
+### 3. SQL Injection Protection
+
+```python
+# Good - SQLAlchemy ORM (parameterized queries)
+notice = Notice.query.filter_by(id=id).first()
+
+# Bad - String concatenation
+query = f"SELECT * FROM notices WHERE id = {id}"  # ❌ VULNERABLE
+```
+
+### 4. Input Validation
+
+```python
+# Validate required fields
+if not data or not data.get("title"):
+    return jsonify({"error": "title is required"}), 400
+
+# Validate enum values
+valid_categories = ["general", "academic", "event", "urgent", "club"]
+if category not in valid_categories:
+    return jsonify({"error": f"Invalid category"}), 400
+```
+
+### 5. CORS Configuration
+
+```python
+# Allow frontend to call API
+CORS(app)
+```
+
+### 6. Docker Security
+
+✅ **Alpine base images** (smaller attack surface)
+```dockerfile
+FROM python:3.11-slim
+```
+
+✅ **Read-only file systems**
+```yaml
+# docker-compose.yml
+volumes:
+  - ./frontend:/usr/share/nginx/html:ro  # :ro = read-only
+```
+
+✅ **Health checks**
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U postgres"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
 ```
 
 ---
 
-## 🗄️ Database Schema
+## 🐛 Troubleshooting
 
-### notices table
-```sql
-CREATE TABLE notices (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(80) NOT NULL,
-  body VARCHAR(400) NOT NULL,
-  category VARCHAR(20) NOT NULL DEFAULT 'general',
-  author VARCHAR(40) NOT NULL,
-  date VARCHAR(20) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### Frontend Can't Connect to Backend
+
+**Problem:** `Failed to fetch http://localhost:5001/announcements`
+
+**Solutions:**
+
+1. Check backend is running:
+```bash
+curl http://localhost:5001/health
+```
+
+2. Check CORS is enabled in `app.py`:
+```python
+from flask_cors import CORS
+CORS(app)
+```
+
+3. Check backend port in frontend code:
+```javascript
+const API_URL = 'http://localhost:5001';  // Make sure port is 5001
 ```
 
 ---
 
-## 🔐 Security Features
+### Docker Compose Services Won't Connect
 
-- ✅ **SQL Injection Protection** - SQLAlchemy parameterized queries
-- ✅ **Input Validation** - Required fields, category whitelist
-- ✅ **Environment Variables** - Credentials NOT hardcoded
-- ✅ **CORS Configured** - Allows all origins for development
-- ⚠️ **No Authentication** - Add authentication layer if needed for production
+**Problem:** `backend_1 | psycopg2.OperationalError: could not connect to server`
 
----
+**Solutions:**
 
-## 📝 Environment Variables
-
-### Local Development (.env)
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=noticeboard
-DB_USER=keldendrac
-DB_PASSWORD=
-FLASK_ENV=development
-FLASK_DEBUG=True
+1. Use **service name**, not `localhost`:
+```yaml
+environment:
+  DB_HOST: db     # ✅ Correct (service name)
+  # NOT: localhost ❌
 ```
 
-### Docker Deployment (docker-compose)
+2. Check health checks:
+```bash
+docker-compose logs db
 ```
-DB_HOST=db                  # Service name in docker-compose
-DB_PORT=5432
-DB_NAME=noticeboard
-DB_USER=postgres
-DB_PASSWORD=postgres
-FLASK_ENV=production
-FLASK_DEBUG=False
+
+3. Rebuild images:
+```bash
+docker-compose down
+docker-compose up --build
 ```
 
 ---
 
-## 🧪 Testing Checklist
+### Port Already in Use
 
-- [x] Backend runs without errors
-- [x] PostgreSQL connects successfully
-- [x] GET /health returns 200
-- [x] POST creates notices in DB
-- [x] GET retrieves from database
-- [x] PUT updates notices
-- [x] DELETE removes notices
-- [x] Frontend connects to backend
-- [x] CORS fixed (all origins allowed for dev)
-- [x] Full-stack integration tested
-- [ ] Docker build works (Docker team)
-- [ ] docker-compose runs all services (Docker team)
+**Problem:** `Error starting userland proxy: bind: address already in use`
+
+**Solution:**
+
+```bash
+# Find process using port 5001
+lsof -i :5001
+
+# Kill process
+kill -9 <PID>
+
+# Or change port in docker-compose.yml
+ports:
+  - "5002:5000"  # Use 5002 instead
+```
+
+---
+
+### Pipeline Fails on Docker Build
+
+**Problem:** GitHub Actions build fails with auth error
+
+**Solution:**
+
+1. Check GitHub Secrets exist:
+   - `DOCKER_USERNAME`
+   - `DOCKER_PASSWORD`
+
+2. Generate new Docker token:
+   - Docker Hub → Account Settings → Security → Personal Access Tokens
+
+3. Update GitHub Secret:
+   - GitHub Repo → Settings → Secrets → DOCKER_PASSWORD
+
+---
+
+### Pytest Fails: "PostgreSQL Connection Refused"
+
+**Problem:** `psycopg2.OperationalError: could not connect to server`
+
+**Solution:**
+
+1. Make sure PostgreSQL is running:
+```bash
+# macOS
+brew services start postgresql@14
+
+# Linux
+sudo systemctl start postgresql
+
+# Or use Docker
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:14
+```
+
+2. Create test database:
+```bash
+createdb noticeboard_test
+```
+
+3. Run pytest:
+```bash
+pytest tests/ -v
+```
 
 ---
 
 ## 📚 Additional Resources
 
-- **Backend API Docs:** See `backend/README.md`
-- **Flask SQLAlchemy:** https://flask-sqlalchemy.palletsprojects.com/
-- **PostgreSQL Docs:** https://www.postgresql.org/docs/
-- **Docker Docs:** https://docs.docker.com/
+### Documentation
+- [Flask Documentation](https://flask.palletsprojects.com/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+
+### Tools
+- [Postman](https://www.postman.com/) – API testing
+- [DBeaver](https://dbeaver.io/) – Database GUI
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) – Local Docker environment
+
+### Monitoring
+- [Docker Hub Dashboard](https://hub.docker.com/repositories) – View pushed images
+- [GitHub Actions Tab](https://github.com/Yesheylhaden/DSO101_StudentNoticeBoard_GroupProject/actions) – Pipeline runs
+- [GitHub Security Tab](https://github.com/Yesheylhaden/DSO101_StudentNoticeBoard_GroupProject/security) – Vulnerability reports
 
 ---
 
-## 👥 Team Roles
+## 📝 Contributing
 
-| Name | Task | Status |
-|------|------|--------|
-| Kelden | Backend API + PostgreSQL | ✅ DONE |
-| Phuntsho | Dockerfile + docker-compose | ⏳ TODO |
-| Jigme | Dockerfile + docker-compose | ⏳ TODO |
-| Yeshey | Dockerfile + docker-compose | ⏳ TODO |
-
----
-
-## 🚀 Deployment Checklist
-
-- [x] Backend API complete
-- [x] Database working
-- [x] Frontend connected
-- [x] Local testing passed
-- [ ] Dockerfile created
-- [ ] docker-compose.yml created
-- [ ] Containers built successfully
-- [ ] All services running
-- [ ] API accessible from containers
-- [ ] Data persists in PostgreSQL container
-
----
-
-## ⚡ Quick Commands
+### Development Workflow
 
 ```bash
-# Backend
-cd backend && python3 app.py
+# 1. Create feature branch
+git checkout -b feature/new-feature
 
-# Test API
+# 2. Make changes
+# (Edit files, test locally)
+
+# 3. Push to GitHub
+git add .
+git commit -m "Add new feature"
+git push origin feature/new-feature
+
+# 4. Create Pull Request on GitHub
+# (CI/CD pipeline runs automatically)
+
+# 5. Merge to main after approval
+# (Triggers full deployment pipeline)
+```
+
+### Local Testing Before Push
+
+```bash
+# Run linting
+flake8 backend/app.py
+
+# Run tests
+pytest backend/tests/ -v
+
+# Test with Docker Compose
+docker-compose up -d
 curl http://localhost:5001/health
-
-# Check database
-psql -d noticeboard -c "SELECT * FROM notices;"
-
-# Docker (when ready)
-docker-compose up --build
 docker-compose down
 ```
 
 ---
 
-## 📞 Troubleshooting
+## 📞 Support & Contact
 
-**Port 5001 already in use?**
-```bash
-lsof -ti:5001 | xargs kill -9
-```
+For issues or questions:
 
-**Database connection error?**
-```bash
-# Make sure PostgreSQL is running
-brew services start postgresql@14
-# Create database
-createdb noticeboard
-```
-
-**API not responding?**
-- Check `.env` file has correct credentials
-- Verify PostgreSQL is running: `psql -l`
-- Check backend logs: `python3 app.py`
+1. Check the [Troubleshooting](#-troubleshooting) section
+2. Open a GitHub Issue in the repository
+3. Contact the team via email
 
 ---
 
 ## 📄 License
 
-School Project - CST (College of Science and Technology), Phuntsholing
+This project is part of **DSO101 (College of Science and Technology)** coursework.
 
 ---
 
-**Last Updated:** 19 May 2026  
-**Status:** ✅ Backend Complete & Tested | ⏳ Docker Team - Ready for Containerization
+## 🎉 Acknowledgments
+
+Built with ❤️ by the **DSO101 Group Project Team** as a demonstration of modern DevOps practices, containerization, and full-stack development.
+
+**Special Thanks To:**
+- Python & Flask community
+- PostgreSQL community
+- Docker & GitHub Actions teams
+- All contributors and reviewers
 
 ---
 
-## 📞 Quick Contact
-
-**Kelden (Backend):** Backend is DONE and tested with frontend ✅  
-**Team (Docker):** Follow the TODO section above - all code provided!
-
-**Backend is production-ready. Docker team can start immediately with the code templates provided.**
+**Last Updated:** May 24, 2026  
+**Status:** ✅ Production Ready
