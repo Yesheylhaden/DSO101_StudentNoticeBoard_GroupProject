@@ -4,15 +4,15 @@ services:
   db:
     image: postgres:14
     environment:
-      POSTGRES_DB: noticeboard
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_db_2
+      POSTGRES_USER: todo_db_2_user
+      POSTGRES_PASSWORD: 69p7iMB52e3Q0kLkf17zRMBUcmzgay8i
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U todo_db_2_user" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,9 +24,9 @@ services:
     environment:
       DB_HOST: db # ⭐ IMPORTANT: Use 'db' (service name), NOT localhost
       DB_PORT: 5432
-      DB_NAME: noticeboard
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_NAME: todo_db_2
+      DB_USER: todo_db_2_user
+      DB_PASSWORD: 69p7iMB52e3Q0kLkf17zRMBUcmzgay8i
       FLASK_ENV: production
       FLASK_DEBUG: False
     depends_on:
