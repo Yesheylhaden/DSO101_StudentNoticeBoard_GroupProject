@@ -53,8 +53,12 @@ class Notice(db.Model):
 
 
 # ── CREATE TABLES ON STARTUP ──
-with app.app_context():
-    db.create_all()
+try:
+    with app.app_context():
+        db.create_all()
+except Exception as e:
+    print(f"Warning: Could not create database tables on startup: {e}")
+    print("Tables may need to be created manually or will be created on first request.")
 
 
 # ── ROUTES ──
@@ -68,74 +72,94 @@ def health():
 # GET all notices
 @app.route("/announcements", methods=["GET"])
 def get_notices():
-    notices = Notice.query.order_by(Notice.created_at.desc()).all()
-    return jsonify([n.to_dict() for n in notices]), 200
+    try:
+        notices = Notice.query.order_by(Notice.created_at.desc()).all()
+        return jsonify([n.to_dict() for n in notices]), 200
+    except Exception as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": "Database connection failed"}), 503
 
 
 # POST a new notice
 @app.route("/announcements", methods=["POST"])
 def create_notice():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    # Validate required fields
-    if not data or not data.get("title") or not data.get("body") or not data.get("author"):
-        return jsonify({"error": "title, body, and author are required"}), 400
+        # Validate required fields
+        if not data or not data.get("title") or not data.get("body") or not data.get("author"):
+            return jsonify({"error": "title, body, and author are required"}), 400
 
-    # Validate category
-    valid_categories = ["general", "academic", "event", "urgent", "club"]
-    category = data.get("category", "general")
-    if category not in valid_categories:
-        return jsonify({"error": f"category must be one of {valid_categories}"}), 400
+        # Validate category
+        valid_categories = ["general", "academic", "event", "urgent", "club"]
+        category = data.get("category", "general")
+        if category not in valid_categories:
+            return jsonify({"error": f"category must be one of {valid_categories}"}), 400
 
-    notice = Notice(
-        title=data["title"],
-        body=data["body"],
-        category=category,
-        author=data["author"],
-        date=datetime.utcnow().strftime("%d %b %Y"),
-    )
-    db.session.add(notice)
-    db.session.commit()
+        notice = Notice(
+            title=data["title"],
+            body=data["body"],
+            category=category,
+            author=data["author"],
+            date=datetime.utcnow().strftime("%d %b %Y"),
+        )
+        db.session.add(notice)
+        db.session.commit()
 
-    return jsonify(notice.to_dict()), 201
+        return jsonify(notice.to_dict()), 201
+    except Exception as e:
+        print(f"Database error: {e}")
+        db.session.rollback()
+        return jsonify({"error": "Failed to create notice"}), 503
 
 
 # UPDATE a notice by ID
 @app.route("/announcements/<int:notice_id>", methods=["PUT"])
 def update_notice(notice_id):
-    notice = Notice.query.get(notice_id)
-    if not notice:
-        return jsonify({"error": "Notice not found"}), 404
+    try:
+        notice = Notice.query.get(notice_id)
+        if not notice:
+            return jsonify({"error": "Notice not found"}), 404
 
-    data = request.get_json()
+        data = request.get_json()
 
-    # Update fields if provided
-    if "title" in data:
-        notice.title = data["title"]
-    if "body" in data:
-        notice.body = data["body"]
-    if "category" in data:
-        valid_categories = ["general", "academic", "event", "urgent", "club"]
-        if data["category"] not in valid_categories:
-            return jsonify({"error": f"category must be one of {valid_categories}"}), 400
-        notice.category = data["category"]
-    if "author" in data:
-        notice.author = data["author"]
+        # Update fields if provided
+        if "title" in data:
+            notice.title = data["title"]
+        if "body" in data:
+            notice.body = data["body"]
+        if "category" in data:
+            valid_categories = ["general",
+                                "academic", "event", "urgent", "club"]
+            if data["category"] not in valid_categories:
+                return jsonify({"error": f"category must be one of {valid_categories}"}), 400
+            notice.category = data["category"]
+        if "author" in data:
+            notice.author = data["author"]
 
-    db.session.commit()
-    return jsonify(notice.to_dict()), 200
+        db.session.commit()
+        return jsonify(notice.to_dict()), 200
+    except Exception as e:
+        print(f"Database error: {e}")
+        db.session.rollback()
+        return jsonify({"error": "Failed to update notice"}), 503
 
 
 # DELETE a notice by ID
 @app.route("/announcements/<int:notice_id>", methods=["DELETE"])
 def delete_notice(notice_id):
-    notice = Notice.query.get(notice_id)
-    if not notice:
-        return jsonify({"error": "Notice not found"}), 404
+    try:
+        notice = Notice.query.get(notice_id)
+        if not notice:
+            return jsonify({"error": "Notice not found"}), 404
 
-    db.session.delete(notice)
-    db.session.commit()
-    return jsonify({"message": "Notice deleted"}), 200
+        db.session.delete(notice)
+        db.session.commit()
+        return jsonify({"message": "Notice deleted"}), 200
+    except Exception as e:
+        print(f"Database error: {e}")
+        db.session.rollback()
+        return jsonify({"error": "Failed to delete notice"}), 503
 
 
 if __name__ == "__main__":
